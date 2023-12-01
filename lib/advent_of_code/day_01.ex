@@ -1,4 +1,50 @@
 defmodule AdventOfCode.Day01 do
+  def parse("", nums, _), do: Enum.reverse(nums)
+  def parse("1" <> rest, nums, part), do: parse(rest, [1 | nums], part)
+  def parse("2" <> rest, nums, part), do: parse(rest, [2 | nums], part)
+  def parse("3" <> rest, nums, part), do: parse(rest, [3 | nums], part)
+  def parse("4" <> rest, nums, part), do: parse(rest, [4 | nums], part)
+  def parse("5" <> rest, nums, part), do: parse(rest, [5 | nums], part)
+  def parse("6" <> rest, nums, part), do: parse(rest, [6 | nums], part)
+  def parse("7" <> rest, nums, part), do: parse(rest, [7 | nums], part)
+  def parse("8" <> rest, nums, part), do: parse(rest, [8 | nums], part)
+  def parse("9" <> rest, nums, part), do: parse(rest, [9 | nums], part)
+
+  def parse("one" <> rest, nums, :part_2), do: parse("e" <> rest, [1 | nums], :part_2)
+  def parse("two" <> rest, nums, :part_2), do: parse("o" <> rest, [2 | nums], :part_2)
+  def parse("three" <> rest, nums, :part_2), do: parse("e" <> rest, [3 | nums], :part_2)
+  def parse("four" <> rest, nums, :part_2), do: parse("r" <> rest, [4 | nums], :part_2)
+  def parse("five" <> rest, nums, :part_2), do: parse("e" <> rest, [5 | nums], :part_2)
+  def parse("six" <> rest, nums, :part_2), do: parse("x" <> rest, [6 | nums], :part_2)
+  def parse("seven" <> rest, nums, :part_2), do: parse("n" <> rest, [7 | nums], :part_2)
+  def parse("eight" <> rest, nums, :part_2), do: parse("t" <> rest, [8 | nums], :part_2)
+  def parse("nine" <> rest, nums, :part_2), do: parse("e" <> rest, [9 | nums], :part_2)
+  def parse(<<_head::size(8), rest::binary>>, nums, part), do: parse(rest, nums, part)
+
+  def get_calibration(num_list), do: List.first(num_list) * 10 + List.last(num_list)
+
+  def parse_input(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&String.trim/1)
+  end
+
+  def part1(args) do
+    args
+    |> parse_input()
+    |> Enum.map(&parse(&1, [], :part_1))
+    |> Enum.map(&get_calibration/1)
+    |> Enum.sum()
+  end
+
+  def part2(args) do
+    args
+    |> parse_input()
+    |> Enum.map(&parse(&1, [], :part_2))
+    |> Enum.map(&get_calibration/1)
+    |> Enum.sum()
+  end
+
   @number_representations %{
     "one" => 1,
     "two" => 2,
@@ -19,12 +65,6 @@ defmodule AdventOfCode.Day01 do
     "8" => 8,
     "9" => 9
   }
-
-  def parse_input(input) do
-    input
-    |> String.split("\n", trim: true)
-    |> Enum.map(&String.trim/1)
-  end
 
   def solve_1(parsed_input) do
     parsed_input
@@ -86,15 +126,15 @@ defmodule AdventOfCode.Day01 do
     end)
   end
 
-  def part1(args) do
-    args
-    |> parse_input()
-    |> solve_1()
-  end
+  # def part1(args) do
+  #   args
+  #   |> parse_input()
+  #   |> solve_1()
+  # end
 
-  def part2(args) do
-    args
-    |> parse_input()
-    |> solve_2()
-  end
+  # def part2(args) do
+  #   args
+  #   |> parse_input()
+  #   |> solve_2()
+  # end
 end
