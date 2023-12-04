@@ -15,14 +15,12 @@ defmodule AdventOfCode.Day04Test do
   test "part1" do
     result = part1(@input)
 
-    assert result
+    assert result == 13
   end
 
-  @tag :skip
   test "part2" do
-    input = nil
-    result = part2(input)
+    result = part2(@input)
 
-    assert result
+    assert result == 30
   end
 end
