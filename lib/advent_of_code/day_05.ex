@@ -8,8 +8,7 @@ defmodule AdventOfCode.Day05 do
   def part2(args) do
     args
     |> parse_input(:part_2)
-
-    # |> solve_2()
+    |> solve_2()
   end
 
   def parse_input(input, flag \\ nil) do
@@ -69,11 +68,10 @@ defmodule AdventOfCode.Day05 do
     |> Enum.map(fn [destination_start, source_start, offset] ->
       {
         source_start..(source_start + offset - 1),
-        destination_start..(destination_start + offset - 1),
         destination_start - source_start
       }
     end)
-    |> sort_ranges()
+    |> Enum.sort_by(fn {a.._, _} -> a end)
   end
 
   def list_to_ints(str_list) do
@@ -87,47 +85,23 @@ defmodule AdventOfCode.Day05 do
           seeds: seeds
         } = maps
       ) do
-    combined_maps = combine_all_maps(maps)
+    # seeds
+    # |> Enum.map(&process_seed(&1, maps))
+
+    all_maps = combine_all_maps(maps)
 
     seeds
-    |> Enum.map(&process_seed(&1, maps))
-    |> Enum.map(&Integer.to_string/1)
-    |> IO.inspect(label: "correct seeds")
-
-    seeds
-    |> Enum.map(&process_map(&1, combined_maps))
-    |> Enum.map(&Integer.to_string/1)
-    |> IO.inspect(label: "seeds")
-
-    35
+    |> Enum.map(fn seed -> Map.get(all_maps, seed) end)
+    |> IO.inspect()
+    |> Enum.min()
   end
 
   def solve_2(
         %{
-          seeds: seeds,
-          seed_soil: seed_soil,
-          soil_fertilizer: soil_fertilizer,
-          fertilizer_water: fertilizer_water,
-          water_light: water_light,
-          light_temp: light_temp,
-          temp_humid: temp_humid,
-          humid_loc: humid_loc
+          seeds: seeds
         } = maps
       ) do
-    IO.puts("\n")
-
-    seed_soil
-    |> combine_maps(soil_fertilizer)
-    # |> IO.inspect(label: "soil fert")
-    |> combine_maps(fertilizer_water)
-    |> IO.inspect(label: "soil water")
-    |> combine_maps(water_light)
-
-    # |> IO.inspect(label: "soil light")
-
-    # |> combine_maps(light_temp)
-    # |> combine_maps(temp_humid)
-    # |> combine_maps(humid_loc)
+    # combined_maps = combine_all_maps(maps)
     # |> IO.inspect(limit: :infinity)
   end
 
@@ -140,53 +114,57 @@ defmodule AdventOfCode.Day05 do
         temp_humid: temp_humid,
         humid_loc: humid_loc
       }) do
-    # IO.inspect(fertilizer_water, label: "fertilizer water")
+    # IO.inspect(soil_fertilizer, label: "soil_fertilizer")
 
     seed_soil
+    |> expand_map()
     |> combine_maps(soil_fertilizer)
-    |> IO.inspect(label: "seed soil")
+    |> combine_maps(fertilizer_water)
+    |> combine_maps(water_light)
+    |> combine_maps(light_temp)
+    |> combine_maps(temp_humid)
+    |> combine_maps(humid_loc)
+  end
 
-    # |> combine_maps(fertilizer_water)
-    # |> IO.inspect(label: "output")
+  def expand_map(list) do
+    list
+    # |> IO.inspect(label: "list to expand")
+    |> Enum.flat_map(fn {rng, offset} ->
+      IO.inspect({rng, offset})
 
-    # |> IO.inspect(label: "soil fert")
-    # |> combine_maps(water_light)
+      Enum.map(rng, fn val ->
+        # if val == 53, do: IO.inspect({val, offset, val + offset})
 
-    # |> combine_maps(light_temp)
+        {val, val + offset}
+      end)
+    end)
+    |> Enum.into(%{})
+
+    # |> IO.inspect(label: "expanded")
   end
 
   def combine_maps(first, second) do
-    concatenated =
-      (first ++ second)
-      |> sort_ranges()
+    expanded = expand_map(second)
 
-    # |> IO.inspect(label: "concatenated and sorted")
+    second_not_in_first =
+      Enum.filter(expanded, fn {k, _v} ->
+        k not in Map.values(first) and not Map.has_key?(first, k)
+      end)
 
-    combine(concatenated, [])
-    |> IO.inspect(label: "combined")
+    # |> IO.inspect(label: "not in first")
+
+    IO.inspect(Map.get(expanded, 53), label: "53")
+
+    first
+    |> Enum.reduce([], fn {k, v}, acc ->
+      [{k, Map.get(expanded, v, v)} | acc]
+    end)
+    |> concatenate_lists(second_not_in_first)
+    |> Enum.into(%{})
   end
 
-  def combine([], acc), do: Enum.reverse(acc)
-  def combine([only], acc), do: combine([], [only | acc])
-
-  def combine([first, second | rest], acc) do
-    [first, second] = sort_ranges([first, second])
-    {first_rng, first_offset} = first
-    {second_rng, second_offset} = second
-
-    IO.inspect({first_rng, first_offset, second_rng, second_offset, rest}, label: "comparing")
-
-    cond do
-      Range.disjoint?(first_rng, second_rng) ->
-        combine([second | rest], [first | acc])
-
-      true ->
-        left = {get_left_disjoint(first_rng, second_rng), first_offset}
-        overlap = {get_overlap(first_rng, second_rng), first_offset + second_offset}
-        right = {get_right_disjoint(first_rng, second_rng), second_offset}
-        IO.inspect({left, overlap, right}, label: "left overlap right")
-        combine(filter_nils([right | rest]), filter_nils([overlap, left]) ++ acc)
-    end
+  def concatenate_lists(first, second) do
+    first ++ second
   end
 
   def get_left_disjoint(a1.._b1, a2.._b2) when a1 == a2, do: nil
@@ -206,7 +184,7 @@ defmodule AdventOfCode.Day05 do
 
   def sort_ranges(list),
     do:
-      Enum.sort(list, fn {a1..b1, _, _}, {a2..b2, _, _} ->
+      Enum.sort(list, fn {a1..b1, _}, {a2..b2, _} ->
         cond do
           a1 == a2 -> b1 < b2
           true -> a1 < a2
@@ -226,17 +204,15 @@ defmodule AdventOfCode.Day05 do
     |> process_map(seed_soil)
     |> process_map(soil_fertilizer)
     |> process_map(fertilizer_water)
-
-    # |> process_map(water_light)
-
-    # |> process_map(light_temp)
-    # |> process_map(temp_humid)
-    # |> process_map(humid_loc)
+    |> process_map(water_light)
+    |> process_map(light_temp)
+    |> process_map(temp_humid)
+    |> process_map(humid_loc)
   end
 
   def process_map(number, map) do
-    {_, _, offset} =
-      Enum.find(map, {number, 0, 0}, fn {src_rng, _dest_rng, _offset} ->
+    {_, offset} =
+      Enum.find(map, {number, 0}, fn {src_rng, _offset} ->
         number in src_rng
       end)
 
