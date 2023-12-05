@@ -8,7 +8,8 @@ defmodule AdventOfCode.Day05 do
   def part2(args) do
     args
     |> parse_input(:part_2)
-    |> solve_2()
+
+    # |> solve_2()
   end
 
   def parse_input(input, flag \\ nil) do
@@ -68,10 +69,11 @@ defmodule AdventOfCode.Day05 do
     |> Enum.map(fn [destination_start, source_start, offset] ->
       {
         source_start..(source_start + offset - 1),
+        destination_start..(destination_start + offset - 1),
         destination_start - source_start
       }
     end)
-    |> Enum.sort_by(fn {a.._, _} -> a end)
+    |> sort_ranges()
   end
 
   def list_to_ints(str_list) do
@@ -85,7 +87,19 @@ defmodule AdventOfCode.Day05 do
           seeds: seeds
         } = maps
       ) do
-    seeds |> Enum.map(&process_seed(&1, maps)) |> Enum.min()
+    combined_maps = combine_all_maps(maps)
+
+    seeds
+    |> Enum.map(&process_seed(&1, maps))
+    |> Enum.map(&Integer.to_string/1)
+    |> IO.inspect(label: "correct seeds")
+
+    seeds
+    |> Enum.map(&process_map(&1, combined_maps))
+    |> Enum.map(&Integer.to_string/1)
+    |> IO.inspect(label: "seeds")
+
+    35
   end
 
   def solve_2(
@@ -104,91 +118,100 @@ defmodule AdventOfCode.Day05 do
 
     seed_soil
     |> combine_maps(soil_fertilizer)
-    |> IO.inspect(label: "seed fertilizer")
+    # |> IO.inspect(label: "soil fert")
+    |> combine_maps(fertilizer_water)
+    |> IO.inspect(label: "soil water")
+    |> combine_maps(water_light)
 
-    # |> combine_maps(fertilizer_water)
-    # |> IO.inspect(label: "seed water")
+    # |> IO.inspect(label: "soil light")
 
-    # |> combine_maps(water_light)
     # |> combine_maps(light_temp)
     # |> combine_maps(temp_humid)
     # |> combine_maps(humid_loc)
+    # |> IO.inspect(limit: :infinity)
+  end
 
-    # |> IO.inspect()
+  def combine_all_maps(%{
+        seed_soil: seed_soil,
+        soil_fertilizer: soil_fertilizer,
+        fertilizer_water: fertilizer_water,
+        water_light: water_light,
+        light_temp: light_temp,
+        temp_humid: temp_humid,
+        humid_loc: humid_loc
+      }) do
+    # IO.inspect(fertilizer_water, label: "fertilizer water")
+
+    seed_soil
+    |> combine_maps(soil_fertilizer)
+    |> IO.inspect(label: "seed soil")
+
+    # |> combine_maps(fertilizer_water)
+    # |> IO.inspect(label: "output")
+
+    # |> IO.inspect(label: "soil fert")
+    # |> combine_maps(water_light)
+
+    # |> combine_maps(light_temp)
   end
 
   def combine_maps(first, second) do
-    combine(first, second, [])
+    concatenated =
+      (first ++ second)
+      |> sort_ranges()
+
+    # |> IO.inspect(label: "concatenated and sorted")
+
+    combine(concatenated, [])
+    |> IO.inspect(label: "combined")
   end
 
-  def combine([], [], acc), do: Enum.reverse(acc)
-  def combine([], second, acc), do: (Enum.reverse(second) ++ acc) |> Enum.reverse()
-  def combine(first, [], acc), do: (Enum.reverse(first) ++ acc) |> Enum.reverse()
+  def combine([], acc), do: Enum.reverse(acc)
+  def combine([only], acc), do: combine([], [only | acc])
 
-  def combine(
-        [{a.._, _} = first_head | first_tail],
-        [{b.._, _} = second_head | second_tail],
-        acc
-      ) do
-    IO.inspect({[first_head | first_tail], [second_head | second_tail]}, label: "inputs")
+  def combine([first, second | rest], acc) do
+    [first, second] = sort_ranges([first, second])
+    {first_rng, first_offset} = first
+    {second_rng, second_offset} = second
 
-    [{first_rng, first_offset}, {second_rng, second_offset}] =
-      [first_head, second_head] |> sort_ranges
+    IO.inspect({first_rng, first_offset, second_rng, second_offset, rest}, label: "comparing")
 
-    IO.inspect([{first_rng, first_offset}, {second_rng, second_offset}], label: "combining")
-
-    # left = {get_left_disjoint(first_rng, second_rng), first_offset}
-    # overlap = {get_overlap(first_rng, second_rng), first_offset + second_offset}
-    # right = {get_right_disjoint(first_rng, second_rng), second_offset}
-    left = get_left_disjoint(first_rng, second_rng)
-    overlap = get_overlap(first_rng, second_rng)
-    right = get_right_disjoint(first_rng, second_rng)
-
-    IO.inspect({left, overlap, right}, label: "left, overlap, right")
-
-    IO.puts("\n")
-
-    # {next_first, next_second} =
     cond do
-      overlap == nil ->
-        combine(
-          first_tail,
-          filter_nils([right | second_tail]) |> sort_ranges(),
-          ([{left, first_offset}] |> filter_nils()) ++ acc
-        )
-
-      a > b ->
-        combine(
-          [right | first_tail] |> filter_nils() |> sort_ranges(),
-          second_tail,
-          ([{overlap, second_offset + first_offset}, {left, first_offset}]
-           |> filter_nils()) ++ acc
-        )
+      Range.disjoint?(first_rng, second_rng) ->
+        combine([second | rest], [first | acc])
 
       true ->
-        combine(
-          first_tail,
-          filter_nils([right | second_tail]) |> sort_ranges(),
-          filter_nils([{overlap, second_offset + first_offset}, {left, first_offset}]) ++ acc
-        )
-
-        # {first_tail, filter_nils([right | second_tail]) |> sort_ranges()}
+        left = {get_left_disjoint(first_rng, second_rng), first_offset}
+        overlap = {get_overlap(first_rng, second_rng), first_offset + second_offset}
+        right = {get_right_disjoint(first_rng, second_rng), second_offset}
+        IO.inspect({left, overlap, right}, label: "left overlap right")
+        combine(filter_nils([right | rest]), filter_nils([overlap, left]) ++ acc)
     end
-
-    # combine(next_first, next_second, filter_nils([overlap, left]) ++ acc)
   end
 
   def get_left_disjoint(a1.._b1, a2.._b2) when a1 == a2, do: nil
-  def get_left_disjoint(a1..b1, a2.._b2), do: a1..min(a2, b1)
+  # def get_left_disjoint(a1..b1, a2.._b2), do: a1..min(a2, b1)
+  def get_left_disjoint(a1..b1, a2.._b2), do: a1..(a2 - 1)
 
   def get_overlap(_a1..b1, a2.._b2) when a2 > b1, do: nil
   def get_overlap(_a1..b1, a2.._b2), do: a2..b1
 
   def get_right_disjoint(_a1..b1, _a2..b2) when b1 == b2, do: nil
-  def get_right_disjoint(_a1..b1, a2..b2), do: max(a2, b1 + 1)..b2
+  def get_right_disjoint(a1..b1, a2..b2) when a1 < a2 and b1 < b2, do: (b1 + 1)..b2
+  def get_right_disjoint(a1..b1, a2..b2) when a1 < a2 and b1 > b2, do: (b2 + 1)..b1
+  def get_right_disjoint(_a1..b1, a2..b2), do: (max(a2, b1) + 1)..max(b2, a2)
+  # def get_right_disjoint(a1..b1, a2..b2), do: (b1 + 1)..max(b2, a1)
 
   def filter_nils(list), do: Enum.filter(list, fn {rng, _} -> rng != nil end)
-  def sort_ranges(list), do: Enum.sort_by(list, fn {a.._, _} -> a end)
+
+  def sort_ranges(list),
+    do:
+      Enum.sort(list, fn {a1..b1, _, _}, {a2..b2, _, _} ->
+        cond do
+          a1 == a2 -> b1 < b2
+          true -> a1 < a2
+        end
+      end)
 
   def process_seed(seed, %{
         seed_soil: seed_soil,
@@ -203,15 +226,17 @@ defmodule AdventOfCode.Day05 do
     |> process_map(seed_soil)
     |> process_map(soil_fertilizer)
     |> process_map(fertilizer_water)
-    |> process_map(water_light)
-    |> process_map(light_temp)
-    |> process_map(temp_humid)
-    |> process_map(humid_loc)
+
+    # |> process_map(water_light)
+
+    # |> process_map(light_temp)
+    # |> process_map(temp_humid)
+    # |> process_map(humid_loc)
   end
 
   def process_map(number, map) do
-    {_, offset} =
-      Enum.find(map, {number, 0}, fn {src_rng, _offset} ->
+    {_, _, offset} =
+      Enum.find(map, {number, 0, 0}, fn {src_rng, _dest_rng, _offset} ->
         number in src_rng
       end)
 
