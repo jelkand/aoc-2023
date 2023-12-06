@@ -87,18 +87,7 @@ defmodule AdventOfCode.Day05 do
       ) do
     seeds
     |> Enum.map(&process_seed(&1, maps))
-    |> Enum.map(&Integer.to_string/1)
-    |> IO.inspect(label: "right")
-
-    all_maps = combine_all_maps(maps)
-    # c|> IO.inspect(label: "map")
-
-    seeds
-    |> Enum.map(fn seed -> process_map(seed, all_maps) end)
-    |> Enum.map(&Integer.to_string/1)
-    |> IO.inspect(label: "wrong")
-
-    # |> Enum.min()
+    |> Enum.min()
   end
 
   def solve_2(
@@ -106,8 +95,18 @@ defmodule AdventOfCode.Day05 do
           seeds: seeds
         } = maps
       ) do
-    # combined_maps = combine_all_maps(maps)
-    # |> IO.inspect(limit: :infinity)
+    {s1.._ = src, dest1.._} =
+      combine_all_maps(maps)
+      |> reconstruct_destination_ranges()
+      |> Enum.sort(fn {_, a.._}, {_, b.._} -> a < b end)
+      |> Enum.find(fn {source_range, _} ->
+        Enum.any?(seeds, &(!Range.disjoint?(&1, source_range)))
+      end)
+
+    seed1.._ =
+      Enum.find(seeds, &(!Range.disjoint?(&1, src)))
+
+    max(s1, seed1) + (dest1 - s1)
   end
 
   def combine_all_maps(%{
@@ -119,14 +118,8 @@ defmodule AdventOfCode.Day05 do
         temp_humid: temp_humid,
         humid_loc: humid_loc
       }) do
-    # IO.inspect(soil_fertilizer, label: "soil_fertilizer")
-    # IO.inspect(fertilizer_water, label: "fertilizer_water")
-
     seed_soil
-    # |> IO.inspect(label: "seed soil")
     |> combine_maps(soil_fertilizer)
-
-    # |> IO.inspect(label: "soil fertilizer")
     |> combine_maps(fertilizer_water)
     |> combine_maps(water_light)
     |> combine_maps(light_temp)
@@ -204,18 +197,11 @@ defmodule AdventOfCode.Day05 do
     [r1..(i1 - 1), (i2 + 1)..r2] |> Enum.filter(&Range.disjoint?(&1, intersection))
   end
 
-  def concatenate_lists(first, second) do
-    first ++ second
+  def reconstruct_destination_ranges(list) do
+    Enum.map(list, fn {source, offset} ->
+      {source, Range.shift(source, offset)}
+    end)
   end
-
-  # def sort_ranges(list),
-  #   do:
-  #     Enum.sort(list, fn {a1..b1, _}, {a2..b2, _} ->
-  #       cond do
-  #         a1 == a2 -> b1 < b2
-  #         true -> a1 < a2
-  #       end
-  #     end)
 
   def process_seed(seed, %{
         seed_soil: seed_soil,
