@@ -65,9 +65,9 @@ defmodule AdventOfCode.Day05 do
     |> String.split("\n", trim: true)
     |> tl()
     |> Enum.map(&list_to_ints/1)
-    |> Enum.map(fn [destination_start, source_start, offset] ->
+    |> Enum.map(fn [destination_start, source_start, range_size] ->
       {
-        source_start..(source_start + offset - 1),
+        source_start..(source_start + range_size - 1),
         destination_start - source_start
       }
     end)
@@ -85,15 +85,20 @@ defmodule AdventOfCode.Day05 do
           seeds: seeds
         } = maps
       ) do
-    # seeds
-    # |> Enum.map(&process_seed(&1, maps))
+    seeds
+    |> Enum.map(&process_seed(&1, maps))
+    |> Enum.map(&Integer.to_string/1)
+    |> IO.inspect(label: "right")
 
     all_maps = combine_all_maps(maps)
+    # c|> IO.inspect(label: "map")
 
     seeds
-    |> Enum.map(fn seed -> Map.get(all_maps, seed) end)
-    |> IO.inspect()
-    |> Enum.min()
+    |> Enum.map(fn seed -> process_map(seed, all_maps) end)
+    |> Enum.map(&Integer.to_string/1)
+    |> IO.inspect(label: "wrong")
+
+    # |> Enum.min()
   end
 
   def solve_2(
@@ -115,10 +120,13 @@ defmodule AdventOfCode.Day05 do
         humid_loc: humid_loc
       }) do
     # IO.inspect(soil_fertilizer, label: "soil_fertilizer")
+    # IO.inspect(fertilizer_water, label: "fertilizer_water")
 
     seed_soil
-    |> expand_map()
+    # |> IO.inspect(label: "seed soil")
     |> combine_maps(soil_fertilizer)
+
+    # |> IO.inspect(label: "soil fertilizer")
     |> combine_maps(fertilizer_water)
     |> combine_maps(water_light)
     |> combine_maps(light_temp)
@@ -126,70 +134,88 @@ defmodule AdventOfCode.Day05 do
     |> combine_maps(humid_loc)
   end
 
-  def expand_map(list) do
-    list
-    # |> IO.inspect(label: "list to expand")
-    |> Enum.flat_map(fn {rng, offset} ->
-      IO.inspect({rng, offset})
-
-      Enum.map(rng, fn val ->
-        # if val == 53, do: IO.inspect({val, offset, val + offset})
-
-        {val, val + offset}
-      end)
-    end)
-    |> Enum.into(%{})
-
-    # |> IO.inspect(label: "expanded")
+  def combine_maps(first, second) do
+    combine(first, second, [])
   end
 
-  def combine_maps(first, second) do
-    expanded = expand_map(second)
+  def combine([], [], acc), do: acc
+  def combine([], to_merge, acc), do: to_merge ++ acc
 
-    second_not_in_first =
-      Enum.filter(expanded, fn {k, _v} ->
-        k not in Map.values(first) and not Map.has_key?(first, k)
-      end)
+  def combine([first | tail], to_merge, acc) do
+    {original_range, offset} = first
 
-    # |> IO.inspect(label: "not in first")
+    # need to match on the output of the first map
+    {match, updated_to_merge} =
+      get_range_and_update_map(Range.shift(original_range, offset), to_merge)
 
-    IO.inspect(Map.get(expanded, 53), label: "53")
+    {calculated, leftover_to_match, leftover_ranges} =
+      handle_match(first, match)
 
-    first
-    |> Enum.reduce([], fn {k, v}, acc ->
-      [{k, Map.get(expanded, v, v)} | acc]
-    end)
-    |> concatenate_lists(second_not_in_first)
-    |> Enum.into(%{})
+    # |> IO.inspect(label: "calculated, leftover to match, leftover ranges")
+
+    combine(leftover_to_match ++ tail, leftover_ranges ++ updated_to_merge, calculated ++ acc)
+  end
+
+  def get_range_and_update_map(find_range, map) do
+    match =
+      Enum.find(map, fn {range, _} -> !Range.disjoint?(find_range, range) end)
+
+    {match, map -- [match]}
+  end
+
+  def handle_match(first, nil), do: {[first], [], []}
+
+  def handle_match({original_range, offset}, {m1..m2 = match_range, match_offset}) do
+    # IO.inspect({Range.shift(original_range, offset), offset, match_range, match_offset},
+    #   label: "handling"
+    # )
+
+    r1..r2 = Range.shift(original_range, offset)
+    # shift the intersection up
+    intersection = max(r1, m1)..min(r2, m2)
+    # IO.inspect(intersection, label: "intersection")
+
+    non_intersecting =
+      handle_intersection(Range.shift(original_range, offset), intersection)
+
+    # |> IO.inspect(label: "range non intersecting")
+
+    # don't shift the match ranges
+    match_non_intersecting =
+      handle_intersection(match_range, intersection)
+
+    # |> IO.inspect(label: "match non intersecting")
+
+    # unshift the range to return it 
+    calculated = [{Range.shift(intersection, -offset), offset + match_offset}]
+    # unshift this as we'll shift it again in the next match
+    leftover_to_match = Enum.map(non_intersecting, &{Range.shift(&1, -offset), offset})
+    # these are left as they are because they are already "outputs"
+    leftovers = Enum.map(match_non_intersecting, &{&1, match_offset})
+
+    {
+      calculated,
+      leftover_to_match,
+      leftovers
+    }
+  end
+
+  def handle_intersection(r1..r2 = _range, i1..i2 = intersection) do
+    [r1..(i1 - 1), (i2 + 1)..r2] |> Enum.filter(&Range.disjoint?(&1, intersection))
   end
 
   def concatenate_lists(first, second) do
     first ++ second
   end
 
-  def get_left_disjoint(a1.._b1, a2.._b2) when a1 == a2, do: nil
-  # def get_left_disjoint(a1..b1, a2.._b2), do: a1..min(a2, b1)
-  def get_left_disjoint(a1..b1, a2.._b2), do: a1..(a2 - 1)
-
-  def get_overlap(_a1..b1, a2.._b2) when a2 > b1, do: nil
-  def get_overlap(_a1..b1, a2.._b2), do: a2..b1
-
-  def get_right_disjoint(_a1..b1, _a2..b2) when b1 == b2, do: nil
-  def get_right_disjoint(a1..b1, a2..b2) when a1 < a2 and b1 < b2, do: (b1 + 1)..b2
-  def get_right_disjoint(a1..b1, a2..b2) when a1 < a2 and b1 > b2, do: (b2 + 1)..b1
-  def get_right_disjoint(_a1..b1, a2..b2), do: (max(a2, b1) + 1)..max(b2, a2)
-  # def get_right_disjoint(a1..b1, a2..b2), do: (b1 + 1)..max(b2, a1)
-
-  def filter_nils(list), do: Enum.filter(list, fn {rng, _} -> rng != nil end)
-
-  def sort_ranges(list),
-    do:
-      Enum.sort(list, fn {a1..b1, _}, {a2..b2, _} ->
-        cond do
-          a1 == a2 -> b1 < b2
-          true -> a1 < a2
-        end
-      end)
+  # def sort_ranges(list),
+  #   do:
+  #     Enum.sort(list, fn {a1..b1, _}, {a2..b2, _} ->
+  #       cond do
+  #         a1 == a2 -> b1 < b2
+  #         true -> a1 < a2
+  #       end
+  #     end)
 
   def process_seed(seed, %{
         seed_soil: seed_soil,
