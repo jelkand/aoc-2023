@@ -144,8 +144,6 @@ defmodule AdventOfCode.Day05 do
     {calculated, leftover_to_match, leftover_ranges} =
       handle_match(first, match)
 
-    # |> IO.inspect(label: "calculated, leftover to match, leftover ranges")
-
     combine(leftover_to_match ++ tail, leftover_ranges ++ updated_to_merge, calculated ++ acc)
   end
 
@@ -159,25 +157,16 @@ defmodule AdventOfCode.Day05 do
   def handle_match(first, nil), do: {[first], [], []}
 
   def handle_match({original_range, offset}, {m1..m2 = match_range, match_offset}) do
-    # IO.inspect({Range.shift(original_range, offset), offset, match_range, match_offset},
-    #   label: "handling"
-    # )
-
     r1..r2 = Range.shift(original_range, offset)
     # shift the intersection up
     intersection = max(r1, m1)..min(r2, m2)
-    # IO.inspect(intersection, label: "intersection")
 
     non_intersecting =
       handle_intersection(Range.shift(original_range, offset), intersection)
 
-    # |> IO.inspect(label: "range non intersecting")
-
     # don't shift the match ranges
     match_non_intersecting =
       handle_intersection(match_range, intersection)
-
-    # |> IO.inspect(label: "match non intersecting")
 
     # unshift the range to return it 
     calculated = [{Range.shift(intersection, -offset), offset + match_offset}]
