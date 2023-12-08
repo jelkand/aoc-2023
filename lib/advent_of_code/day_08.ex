@@ -43,8 +43,6 @@ defmodule AdventOfCode.Day08 do
     iterate_map(first, target, {instructions, map}, 0)
   end
 
-  # def iterate_map(position, target, inputs, steps, flag \\ nil)
-
   def iterate_map(position, target, {instructions, map} = inputs, steps, :continue) do
     direction = get_direction(instructions, steps)
     next = Map.get(map, position) |> elem(direction)
@@ -71,26 +69,16 @@ defmodule AdventOfCode.Day08 do
   def solve_2({_instructions, map} = inputs, start, target) do
     all_starts = Map.keys(map) |> Enum.filter(fn {_, _, c} -> c == start end)
 
-    first_cycles =
-      Enum.map(all_starts, &iterate_map(&1, target, inputs, 0)) |> Enum.map(&elem(&1, 1)) |> dbg
+    first_cycle_sizes =
+      Enum.map(all_starts, &iterate_map(&1, target, inputs, 0))
+      |> Enum.map(&elem(&1, 1))
 
-    # reduce_cycles(first_cycles, inputs, target)
+    reduce_lcms(first_cycle_sizes)
   end
 
-  def reduce_cycles(cycles, inputs, target) do
-    dbg(binding())
-    [smallest | rest] = sorted = Enum.sort_by(cycles, &elem(&1, 1))
-    max = Enum.max_by(sorted, &elem(&1, 1))
+  def reduce_lcms([only]), do: only
 
-    case elem(smallest, 1) == elem(max, 1) do
-      true ->
-        elem(smallest, 1)
-
-      false ->
-        smallest_next =
-          iterate_map(elem(smallest, 0), target, inputs, elem(smallest, 1), :continue)
-
-        reduce_cycles([smallest_next | rest], inputs, target)
-    end
+  def reduce_lcms([first, second | rest]) do
+    reduce_lcms([Math.lcm(first, second) | rest])
   end
 end
