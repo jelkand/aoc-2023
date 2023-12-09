@@ -1,9 +1,13 @@
 defmodule AdventOfCode.Day09 do
   def part1(args) do
-    args |> parse_input() |> Enum.map(&handle_line/1) |> Enum.sum()
+    args |> parse_input() |> Enum.map(fn line -> handle_line(line, &+/2) end) |> Enum.sum()
   end
 
-  def part2(_args) do
+  def part2(args) do
+    args
+    |> parse_input()
+    |> Enum.map(fn line -> handle_line(line, &-/2, :part_2) end)
+    |> Enum.sum()
   end
 
   def parse_input(input) do
@@ -18,8 +22,8 @@ defmodule AdventOfCode.Day09 do
 
   def is_zeros(line), do: Enum.all?(line, fn element -> element == 0 end)
 
-  def handle_line(line) do
-    line |> reduce_line([]) |> reverse_all() |> sum_lines()
+  def handle_line(line, operator, flag \\ nil) do
+    line |> reduce_line([]) |> maybe_reverse_all(flag) |> sum_lines(operator)
   end
 
   def reduce_line(line, acc) do
@@ -29,13 +33,14 @@ defmodule AdventOfCode.Day09 do
     end
   end
 
-  def reverse_all(lines), do: Enum.map(lines, &Enum.reverse/1)
+  def maybe_reverse_all(lines, :part_2), do: lines
+  def maybe_reverse_all(lines, _), do: Enum.map(lines, &Enum.reverse/1)
 
-  def sum_lines([only]), do: hd(only)
+  def sum_lines([only], _), do: hd(only)
 
-  def sum_lines([last, second_last | rest]) do
-    to_add = hd(last) + hd(second_last)
+  def sum_lines([last, second_last | rest], operator) do
+    to_add = operator.(hd(second_last), hd(last))
 
-    sum_lines([[to_add | second_last] | rest])
+    sum_lines([[to_add | second_last] | rest], operator)
   end
 end
