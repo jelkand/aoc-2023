@@ -29,11 +29,21 @@ defmodule AdventOfCode.Day10Test do
     assert result2 == 8
   end
 
-  @tag :skip
   test "part2" do
-    input = nil
-    result = part2(input)
+    input1 = """
+    ...........
+    .S-------7.
+    .|F-----7|.
+    .||.....||.
+    .||.....||.
+    .|L-7.F-J|.
+    .|..|.|..|.
+    .L--J.L--J.
+    ........... 
+    """
 
-    assert result
+    result = part2(input1)
+
+    assert result == 1
   end
 end
