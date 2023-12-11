@@ -44,6 +44,6 @@ defmodule AdventOfCode.Day10Test do
 
     result = part2(input1)
 
-    assert result == 1
+    assert result == 4
   end
 end
