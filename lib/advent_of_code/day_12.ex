@@ -42,8 +42,6 @@ defmodule AdventOfCode.Day12 do
       |> String.replace("P", "#")
 
   def solve_line_internal({springs, [first_section_size | rest]}) do
-    # get all locations where first could go
-
     potential_placements =
       springs
       |> Enum.with_index()
