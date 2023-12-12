@@ -11,11 +11,14 @@ defmodule AdventOfCode.Day12 do
   def solve(input) do
     Agent.start_link(fn -> %{} end, name: __MODULE__)
 
-    # filter out all of the ones that had trailing #'s
     input
-    # |> Enum.at(3)
+    # |> Enum.at(1)
     # |> List.wrap()
     |> Enum.map(&solve_line/1)
+    |> Enum.map(fn springs -> Enum.map(springs, &String.replace(&1, "?", ".")) end)
+    |> Enum.map(&Enum.uniq/1)
+    # |> Enum.map(fn solutions -> Enum.map(solutions, fn s -> Enum.join(s, "") end) end)
+    # |> IO.inspect(label: "got")
     # |> validate_output(input)
     |> Enum.map(&length/1)
     |> dbg
@@ -37,55 +40,45 @@ defmodule AdventOfCode.Day12 do
   end
 
   def solve_line({springs, broken_sections}) do
-    solve_line_internal({springs, broken_sections}, [])
+    solve_line_internal({springs, broken_sections})
   end
 
-  def solve_line_internal({[], []}, string_so_far),
-    do:
-      string_so_far
-      |> dbg()
-      |> Enum.reverse()
-      |> Enum.join("")
-      |> String.replace("S", ".")
-      |> String.replace("P", "#")
-      |> String.replace("?", ".")
+  def solve_line_internal({[], sections}) when sections != [],
+    do: [nil]
 
-  def solve_line_internal({springs, []}, string_so_far) do
+  def solve_line_internal({unassigned_springs, []}) do
     cond do
-      Enum.any?(springs, &(&1 == "#")) -> nil
-      true -> solve_line_internal({[], []}, [springs | string_so_far])
+      Enum.any?(unassigned_springs, &(&1 == "#")) -> [nil]
+      true -> unassigned_springs |> Enum.join("") |> List.wrap()
     end
   end
 
-  def solve_line_internal({springs, [first_section_size | rest]}, string_so_far) do
-    # dbg()
-
+  def solve_line_internal({springs_to_assign, [first_section_size | rest]}) do
     potential_placements =
-      springs
+      springs_to_assign
       |> Enum.with_index()
-      |> Enum.chunk_every(first_section_size, 1)
+      |> Enum.chunk_every(first_section_size, 1, :discard)
       |> Enum.filter(fn chunk ->
         {{_, min_idx}, {_, max_idx}} = Enum.min_max_by(chunk, &elem(&1, 1))
-        first_spring = Enum.find_index(springs, fn sym -> sym == "#" end)
+        first_spring = Enum.find_index(springs_to_assign, fn sym -> sym == "#" end)
 
-        (min_idx == 0 or Enum.at(springs, min_idx - 1, ".") not in ["#", "P"]) and
-          Enum.all?(chunk, fn {sym, _} -> sym in ["?", "#"] end) and
-          Enum.at(springs, max_idx + 1, ".") not in ["#", "P"] and
+        Enum.all?(chunk, fn {sym, _} -> sym in ["#", "?"] end) and
+          Enum.at(springs_to_assign, max_idx + 1, ".") != "#" and
           min_idx <= first_spring
       end)
       |> Enum.map(fn chunk -> Enum.map(chunk, &elem(&1, 1)) end)
 
     recursion_args =
       Enum.map(potential_placements, fn chunk ->
-        {min_idx, max_idx} = Enum.min_max(chunk)
+        {_min_idx, max_idx} = Enum.min_max(chunk)
 
         {assigned, remaining} =
-          springs
+          springs_to_assign
           |> Enum.with_index()
           |> Enum.map(fn {sym, idx} ->
             cond do
               sym in ["?", "#"] and idx in chunk -> "#"
-              sym == "?" and idx < min_idx -> "."
+              sym == "?" and idx <= max_idx + 1 -> "."
               true -> sym
             end
           end)
@@ -94,21 +87,15 @@ defmodule AdventOfCode.Day12 do
         {assigned, remaining}
       end)
 
-    Enum.reduce(recursion_args, [], fn {assigned, remaining}, inner_acc ->
-      dbg()
-      # cached = Agent.get(__MODULE__, &Map.get(&1, {next_springs, rest}))
+    Enum.map(recursion_args, fn {assigned, remaining} ->
+      args = {remaining, rest}
+      # cached = Agent.get(__MODULE__, &Map.get(&1, args))
 
-      # this_child =
-      #   if cached do
-      #     cached
-      #   else
-      #     new = solve_line_internal({next_springs, rest})
-      #     Agent.update(__MODULE__, &Map.put(&1, {next_springs, rest}, new))
-      #   end
+      assigned_str = Enum.join(assigned, "")
 
-      this_child = solve_line_internal({remaining, rest}, [assigned | string_so_far])
+      next = solve_line_internal(args) |> Enum.filter(&(&1 != nil))
 
-      if this_child, do: [this_child | inner_acc], else: inner_acc
+      Enum.map(next, &(assigned_str <> &1))
     end)
     |> List.flatten()
     |> Enum.uniq()
