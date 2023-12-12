@@ -15,10 +15,7 @@ defmodule AdventOfCode.Day12 do
 
   def solve(input) do
     input
-    |> Enum.map(&solve_line/1)
-    |> Enum.map(fn springs -> Enum.map(springs, &String.replace(&1, "?", ".")) end)
-    |> Enum.map(&Enum.uniq/1)
-    |> Enum.map(&length/1)
+    |> Enum.flat_map(&solve_line/1)
     |> Enum.sum()
   end
 
@@ -41,13 +38,13 @@ defmodule AdventOfCode.Day12 do
   end
 
   defmemo(solve_line_internal({[], sections}) when sections != [],
-    do: [nil]
+    do: [0]
   )
 
   defmemo solve_line_internal({unassigned_springs, []}) do
     cond do
-      Enum.any?(unassigned_springs, &(&1 == "#")) -> [nil]
-      true -> unassigned_springs |> Enum.join("") |> List.wrap()
+      Enum.any?(unassigned_springs, &(&1 == "#")) -> [0]
+      true -> [1]
     end
   end
 
@@ -85,16 +82,11 @@ defmodule AdventOfCode.Day12 do
         {assigned, remaining}
       end)
 
-    Enum.map(recursion_args, fn {assigned, remaining} ->
-      assigned_str = Enum.join(assigned, "")
+    Enum.map(recursion_args, fn {_assigned, remaining} ->
       args = {remaining, rest}
 
-      solve_line_internal(args)
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.map(&(assigned_str <> &1))
+      solve_line_internal(args) |> Enum.sum()
     end)
-    |> List.flatten()
-    |> Enum.uniq()
   end
 
   def validate_output(output, input) do
