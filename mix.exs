@@ -23,7 +23,8 @@ defmodule AdventOfCode.MixProject do
     [
       {:benchee, "~> 1.0"},
       {:ssl_verify_fun, "~> 1.1.7", manager: :rebar3, override: true},
-      {:math, "~> 0.7.0"}
+      {:math, "~> 0.7.0"},
+      {:memoize, "~> 1.4"}
     ]
   end
 end

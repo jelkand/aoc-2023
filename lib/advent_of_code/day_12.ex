@@ -1,27 +1,24 @@
 defmodule AdventOfCode.Day12 do
+  use Memoize
+
   def part1(args) do
+    {:ok, _} = Application.ensure_all_started(:memoize)
+
     parse_input(args)
     |> solve()
   end
 
   def part2(args) do
+    {:ok, _} = Application.ensure_all_started(:memoize)
     parse_input(args) |> expand_input() |> solve()
   end
 
   def solve(input) do
-    Agent.start_link(fn -> %{} end, name: __MODULE__)
-
     input
-    # |> Enum.at(1)
-    # |> List.wrap()
     |> Enum.map(&solve_line/1)
     |> Enum.map(fn springs -> Enum.map(springs, &String.replace(&1, "?", ".")) end)
     |> Enum.map(&Enum.uniq/1)
-    # |> Enum.map(fn solutions -> Enum.map(solutions, fn s -> Enum.join(s, "") end) end)
-    # |> IO.inspect(label: "got")
-    # |> validate_output(input)
     |> Enum.map(&length/1)
-    |> dbg
     |> Enum.sum()
   end
 
@@ -43,17 +40,18 @@ defmodule AdventOfCode.Day12 do
     solve_line_internal({springs, broken_sections})
   end
 
-  def solve_line_internal({[], sections}) when sections != [],
+  defmemo(solve_line_internal({[], sections}) when sections != [],
     do: [nil]
+  )
 
-  def solve_line_internal({unassigned_springs, []}) do
+  defmemo solve_line_internal({unassigned_springs, []}) do
     cond do
       Enum.any?(unassigned_springs, &(&1 == "#")) -> [nil]
       true -> unassigned_springs |> Enum.join("") |> List.wrap()
     end
   end
 
-  def solve_line_internal({springs_to_assign, [first_section_size | rest]}) do
+  defmemo solve_line_internal({springs_to_assign, [first_section_size | rest]}) do
     potential_placements =
       springs_to_assign
       |> Enum.with_index()
@@ -88,14 +86,12 @@ defmodule AdventOfCode.Day12 do
       end)
 
     Enum.map(recursion_args, fn {assigned, remaining} ->
-      args = {remaining, rest}
-      # cached = Agent.get(__MODULE__, &Map.get(&1, args))
-
       assigned_str = Enum.join(assigned, "")
+      args = {remaining, rest}
 
-      next = solve_line_internal(args) |> Enum.filter(&(&1 != nil))
-
-      Enum.map(next, &(assigned_str <> &1))
+      solve_line_internal(args)
+      |> Enum.filter(&(&1 != nil))
+      |> Enum.map(&(assigned_str <> &1))
     end)
     |> List.flatten()
     |> Enum.uniq()
