@@ -11,12 +11,14 @@ defmodule AdventOfCode.Day12 do
   def solve(input) do
     Agent.start_link(fn -> %{} end, name: __MODULE__)
 
-    output =
-      solver(input)
-
     # filter out all of the ones that had trailing #'s
-    validate_output(input, output)
+    input
+    # |> Enum.at(3)
+    # |> List.wrap()
+    |> Enum.map(&solve_line/1)
+    # |> validate_output(input)
     |> Enum.map(&length/1)
+    |> dbg
     |> Enum.sum()
   end
 
@@ -34,24 +36,30 @@ defmodule AdventOfCode.Day12 do
     }
   end
 
-  def solver(springs) do
-    springs
-    |> Enum.map(&solve_line/1)
-  end
-
   def solve_line({springs, broken_sections}) do
-    solve_line_internal({springs, broken_sections})
+    solve_line_internal({springs, broken_sections}, [])
   end
 
-  def solve_line_internal({springs, []}),
+  def solve_line_internal({[], []}, string_so_far),
     do:
-      springs
+      string_so_far
+      |> dbg()
+      |> Enum.reverse()
       |> Enum.join("")
       |> String.replace("S", ".")
       |> String.replace("P", "#")
       |> String.replace("?", ".")
 
-  def solve_line_internal({springs, [first_section_size | rest]}) do
+  def solve_line_internal({springs, []}, string_so_far) do
+    cond do
+      Enum.any?(springs, &(&1 == "#")) -> nil
+      true -> solve_line_internal({[], []}, [springs | string_so_far])
+    end
+  end
+
+  def solve_line_internal({springs, [first_section_size | rest]}, string_so_far) do
+    # dbg()
+
     potential_placements =
       springs
       |> Enum.with_index()
@@ -69,20 +77,25 @@ defmodule AdventOfCode.Day12 do
 
     recursion_args =
       Enum.map(potential_placements, fn chunk ->
-        springs
-        |> Enum.with_index()
-        |> Enum.map(fn {sym, idx} ->
-          {min_idx, _max_idx} = Enum.min_max(chunk)
+        {min_idx, max_idx} = Enum.min_max(chunk)
 
-          cond do
-            sym in ["?", "#"] and idx in chunk -> "P"
-            sym == "?" and idx < min_idx -> "S"
-            true -> sym
-          end
-        end)
+        {assigned, remaining} =
+          springs
+          |> Enum.with_index()
+          |> Enum.map(fn {sym, idx} ->
+            cond do
+              sym in ["?", "#"] and idx in chunk -> "#"
+              sym == "?" and idx < min_idx -> "."
+              true -> sym
+            end
+          end)
+          |> Enum.split(max_idx + 2)
+
+        {assigned, remaining}
       end)
 
-    Enum.reduce(recursion_args, [], fn next_springs, inner_acc ->
+    Enum.reduce(recursion_args, [], fn {assigned, remaining}, inner_acc ->
+      dbg()
       # cached = Agent.get(__MODULE__, &Map.get(&1, {next_springs, rest}))
 
       # this_child =
@@ -93,7 +106,7 @@ defmodule AdventOfCode.Day12 do
       #     Agent.update(__MODULE__, &Map.put(&1, {next_springs, rest}, new))
       #   end
 
-      this_child = solve_line_internal({next_springs, rest})
+      this_child = solve_line_internal({remaining, rest}, [assigned | string_so_far])
 
       if this_child, do: [this_child | inner_acc], else: inner_acc
     end)
@@ -101,7 +114,7 @@ defmodule AdventOfCode.Day12 do
     |> Enum.uniq()
   end
 
-  def validate_output(input, output) do
+  def validate_output(output, input) do
     chunks = input |> Enum.map(&elem(&1, 1))
 
     Enum.zip(chunks, output)
