@@ -1,19 +1,23 @@
 defmodule AdventOfCode.Day12 do
-  # 8832 too high
-  # 8464 too high
   def part1(args) do
-    input =
-      parse_input(args)
+    parse_input(args)
+    |> solve()
+  end
 
-    output = solve_1(input)
+  def part2(args) do
+    parse_input(args) |> expand_input() |> solve()
+  end
+
+  def solve(input) do
+    Agent.start_link(fn -> %{} end, name: __MODULE__)
+
+    output =
+      solver(input)
 
     # filter out all of the ones that had trailing #'s
     validate_output(input, output)
     |> Enum.map(&length/1)
     |> Enum.sum()
-  end
-
-  def part2(_args) do
   end
 
   def parse_input(input) do
@@ -30,13 +34,9 @@ defmodule AdventOfCode.Day12 do
     }
   end
 
-  def solve_1(springs) do
+  def solver(springs) do
     springs
     |> Enum.map(&solve_line/1)
-
-    # |> Enum.map(&length/1)
-    # |> Enum.sum()
-    # |> dbg
   end
 
   def solve_line({springs, broken_sections}) do
@@ -83,6 +83,16 @@ defmodule AdventOfCode.Day12 do
       end)
 
     Enum.reduce(recursion_args, [], fn next_springs, inner_acc ->
+      # cached = Agent.get(__MODULE__, &Map.get(&1, {next_springs, rest}))
+
+      # this_child =
+      #   if cached do
+      #     cached
+      #   else
+      #     new = solve_line_internal({next_springs, rest})
+      #     Agent.update(__MODULE__, &Map.put(&1, {next_springs, rest}, new))
+      #   end
+
       this_child = solve_line_internal({next_springs, rest})
 
       if this_child, do: [this_child | inner_acc], else: inner_acc
@@ -100,6 +110,14 @@ defmodule AdventOfCode.Day12 do
         String.split(str, ".", trim: true) |> Enum.map(&String.length/1)
       end)
       |> Enum.filter(fn translated -> translated == chunked end)
+    end)
+  end
+
+  def expand_input(input) do
+    Enum.map(input, fn {springs, chunks} ->
+      # this is horrible lol
+      {springs ++ ["?"] ++ springs ++ ["?"] ++ springs ++ ["?"] ++ springs ++ ["?"] ++ springs,
+       chunks ++ chunks ++ chunks ++ chunks ++ chunks}
     end)
   end
 end
