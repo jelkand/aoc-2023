@@ -31,10 +31,6 @@ defmodule AdventOfCode.Day13 do
     vertical_reflections =
       pattern |> transpose() |> get_horizontal_reflections(horizontal_size)
 
-    # {pattern, transpose(pattern)} |> dbg()
-
-    # dbg(binding())
-    # {horizontal_reflections, vertical_reflections} |> dbg()
     vertical_reflections + 100 * horizontal_reflections
   end
 
@@ -43,9 +39,7 @@ defmodule AdventOfCode.Day13 do
       to_grab = min(mirror_point, pattern_size - mirror_point)
 
       left = Enum.slice(pattern, (mirror_point - to_grab)..(mirror_point - 1))
-      right = Enum.slice(pattern, mirror_point..(mirror_point + to_grab))
-
-      # dbg()
+      right = Enum.slice(pattern, mirror_point..(mirror_point + to_grab - 1))
 
       Enum.reverse(left) == right
     end)
