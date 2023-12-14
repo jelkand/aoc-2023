@@ -10,7 +10,6 @@ defmodule AdventOfCode.Day14 do
 
   def part2(args) do
     max_row = String.split(args, "\n", trim: true) |> length()
-    # max_col = String.split(args, "\n", trim: true) |> hd() |> String.length()
 
     board = parse_input(args)
 
@@ -21,28 +20,7 @@ defmodule AdventOfCode.Day14 do
 
     last_cycle
     |> cycle_times(remainder_to_iterate + 1)
-    # |> pretty_print(max_row, max_col)
     |> score(max_row)
-
-    # pretty_print(last_cycle, max_row, max_col)
-
-    # next = last_cycle |> cycle_times(cycle_size) |> pretty_print(max_row, max_col)
-
-    # IO.inspect(last_cycle == next, label: "same?")
-    # |> cycle()
-    # |> Stream.iterate(&cycle/1)
-    # |> Stream.take_while(fn resulting_board ->
-    #   pretty_print(resulting_board, max_row, max_col)
-    #   resulting_board != board
-    # end)
-    # |> Enum.to_list()
-
-    # |> cycle()
-    # |> cycle()
-    # |> cycle()
-    # |> pretty_print(max_row, max_col)
-
-    # |> score(max_row)
   end
 
   def parse_input(input) do
@@ -210,9 +188,6 @@ defmodule AdventOfCode.Day14 do
     board
     |> find_cycle_internal([:erlang.phash2(board)])
   end
-
-  # {cycle_size, last_cycle_pos, last_cycle} =
-  #   find_cycle(board)
 
   def find_cycle_internal(board, found_boards) do
     next = cycle(board)
