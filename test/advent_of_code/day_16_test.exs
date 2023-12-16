@@ -3,12 +3,22 @@ defmodule AdventOfCode.Day16Test do
 
   import AdventOfCode.Day16
 
-  @tag :skip
+  @input """
+  .|...\\....
+  |.-.\\.....
+  .....|-...
+  ........|.
+  ..........
+  .........\\
+  ..../.\\\\..
+  .-.-/..|..
+  .|....-|.\\
+  ..//.|....
+  """
   test "part1" do
-    input = nil
-    result = part1(input)
+    result = part1(@input)
 
-    assert result
+    assert result == 46
   end
 
   @tag :skip
