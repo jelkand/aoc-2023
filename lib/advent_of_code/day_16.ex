@@ -28,31 +28,26 @@ defmodule AdventOfCode.Day16 do
   end
 
   def trace_beam_and_count(map, start \\ {0, 0, :right}) do
-    {:ok, energized_agent} = Agent.start_link(fn -> MapSet.new() end)
-    trace_beam_internal(map, start, energized_agent)
-
-    Agent.get(energized_agent, & &1)
+    trace_beam_internal(map, [start], MapSet.new())
     |> count_energized()
   end
 
-  def trace_beam_internal(map, {row, col, direction}, pid) do
+  def trace_beam_internal(_map, [], set), do: set
+
+  def trace_beam_internal(map, [{row, col, direction} | rest], set) do
     cond do
-      {row, col, direction} in Agent.get(pid, & &1) ->
-        nil
+      {row, col, direction} in set ->
+        trace_beam_internal(map, rest, set)
 
       !Map.has_key?(map, {row, col}) ->
-        nil
+        trace_beam_internal(map, rest, set)
 
       true ->
         sym = Map.get(map, {row, col})
 
         next = get_next(sym, {row, col, direction})
 
-        Enum.each(next, fn next ->
-          Agent.update(pid, fn state -> MapSet.put(state, {row, col, direction}) end)
-
-          trace_beam_internal(map, next, pid)
-        end)
+        trace_beam_internal(map, next ++ rest, MapSet.put(set, {row, col, direction}))
     end
   end
 
