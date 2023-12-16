@@ -2,11 +2,15 @@ defmodule AdventOfCode.Day16 do
   def part1(args) do
     args
     |> parse_input()
-    |> trace_beam()
-    |> count_energized()
+    |> trace_beam_and_count()
   end
 
-  def part2(_args) do
+  def part2(args) do
+    map = parse_input(args)
+
+    {rows, cols} = Enum.max_by(map, fn {pos, _} -> pos end) |> elem(0)
+
+    construct_starts(rows, cols) |> run_all(map)
   end
 
   def parse_input(input) do
@@ -23,15 +27,17 @@ defmodule AdventOfCode.Day16 do
     end)
   end
 
-  def trace_beam(map) do
-    Agent.start_link(fn -> MapSet.new() end, name: :energized)
-    trace_beam_internal(map, {0, 0, :right})
-    Agent.get(:energized, & &1)
+  def trace_beam_and_count(map, start \\ {0, 0, :right}) do
+    {:ok, energized_agent} = Agent.start_link(fn -> MapSet.new() end)
+    trace_beam_internal(map, start, energized_agent)
+
+    Agent.get(energized_agent, & &1)
+    |> count_energized()
   end
 
-  def trace_beam_internal(map, {row, col, direction}) do
+  def trace_beam_internal(map, {row, col, direction}, pid) do
     cond do
-      {row, col, direction} in Agent.get(:energized, & &1) ->
+      {row, col, direction} in Agent.get(pid, & &1) ->
         nil
 
       !Map.has_key?(map, {row, col}) ->
@@ -43,9 +49,9 @@ defmodule AdventOfCode.Day16 do
         next = get_next(sym, {row, col, direction})
 
         Enum.each(next, fn next ->
-          Agent.update(:energized, fn state -> MapSet.put(state, {row, col, direction}) end)
+          Agent.update(pid, fn state -> MapSet.put(state, {row, col, direction}) end)
 
-          trace_beam_internal(map, next)
+          trace_beam_internal(map, next, pid)
         end)
     end
   end
@@ -97,5 +103,23 @@ defmodule AdventOfCode.Day16 do
     |> Enum.map(fn {row, col, _} -> {row, col} end)
     |> MapSet.new()
     |> MapSet.size()
+  end
+
+  def construct_starts(rows, _cols) do
+    for var <- 0..rows do
+      [
+        {0, var, :down},
+        {var, 0, :right},
+        {rows, var, :up},
+        {var, rows, :left}
+      ]
+    end
+    |> List.flatten()
+  end
+
+  def run_all(starts, map) do
+    Enum.map(starts, fn start -> Task.async(fn -> trace_beam_and_count(map, start) end) end)
+    |> Task.await_many(:infinity)
+    |> Enum.max()
   end
 end
